@@ -95,7 +95,7 @@ sub writeToDb {
     use DBI;
     my $dbh = DBI->connect('dbi:mysql:perltest','root','password')
         or die "Connection Error: $DBI::errstr\n";
-    $sql = "select * from samples";
+    $sql = "insert into bibelwikivalidator_status values();";
     $sth = $dbh->prepare($sql);
     $sth->execute
         or die "SQL Error: $DBI::errstr\n";
