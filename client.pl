@@ -72,9 +72,10 @@ sub retrieveChanges {
 
 sub retrieveStatus {
     my ($page_name, $host, $port) = @_;
+    my $safe_page_name = uri_escape($page_name);
      
     my $filled = $chapter_url;
-    $filled =~ s/%s/$page_name/;
+    $filled =~ s/%s/$save_page_name/;
     my $response = $ua->get("$host:$port/validate", 'url' => $filled);
      
     if ($response->is_success) {
