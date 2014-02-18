@@ -5,8 +5,11 @@ use LWP::UserAgent;
 use POSIX qw(strftime);
 use DateTime;
 use JSON;
+use YAML::Any qw{LoadFile};
 use URI::Escape;
+use File::Slurp;
 
+my $book_file = 'bibleBooks.yml';
 my $tracking_file = 'time_tracker';
 my $chapter_url = 'http://www.offene-bibel.de/wiki/index.php5?title=%s&action=raw';
 my $rc_url = 'http://www.offene-bibel.de/wiki/api.php?action=query&list=recentchanges&rcend=%s&rclimit=500&rcprop=title|ids&format=json';
@@ -17,6 +20,8 @@ my $ua = LWP::UserAgent->new;
 $ua->timeout(10);
 # Load proxy settings from environment
 $ua->env_proxy;
+
+my $book_list = LoadFile($book_file);
 
 my @changes = retrieveChanges();
 foreach my $change (@changes) {
@@ -50,11 +55,13 @@ sub retrieveChanges {
                 $end_found = 1;
                 last;
             }
-            push @change_list, {
-                page_name => $change->{title},
-                page_id => $change->{pageid},
-                rev_id => $change->{revid},
-            };
+            if (is_bible_book($change->{title})) {
+                push @change_list, {
+                    page_name => $change->{title},
+                    page_id => $change->{pageid},
+                    rev_id => $change->{revid},
+                };
+            }
         }
         say "Didn't get all diffs." if not $end_found;
 
@@ -108,5 +115,13 @@ sub writeToDb {
     while (my @row = $sth->fetchrow_array) {
         print "@row\n";
     } 
+}
+
+sub is_bible_book {
+    my ($potential_name) = @_;
+    for my $book (@$book_list) {
+        return 1 if ($potential_name  =~ /^$book->{name} \d+$/);
+    }
+    return 0;
 }
 
