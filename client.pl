@@ -5,6 +5,7 @@ use LWP::UserAgent;
 use POSIX qw(strftime);
 use DateTime;
 use JSON;
+use URI::Escape;
 
 my $tracking_file = 'time_tracker';
 my $chapter_url = 'http://www.offene-bibel.de/wiki/index.php5?title=%s&action=raw';
@@ -75,7 +76,7 @@ sub retrieveStatus {
     my $safe_page_name = uri_escape($page_name);
      
     my $filled = $chapter_url;
-    $filled =~ s/%s/$save_page_name/;
+    $filled =~ s/%s/$safe_page_name/;
     my $response = $ua->get("$host:$port/validate", 'url' => $filled);
      
     if ($response->is_success) {
