@@ -55,8 +55,7 @@ Realized in the Extension. We add two new tags:
 - {{#ofbi_pagestatus: Genesis_1}}
 - {{#ofbi_status_overview}} (eventuell als Tag)
 
-https://www.mediawiki.org/wiki/Manual:Parser_functions
-https://www.mediawiki.org/wiki/Manual:Tag_extensions
-
-http://www.offene-bibel.de/wiki/api.php5?titles=Genesis_1&action=query&prop=revisions&format=json
-http://www.offene-bibel.de/wiki/api.php?action=query&list=recentchanges&rcend=20140105101010&rclimit=500&rcprop=title|ids&format=json
+- <https://www.mediawiki.org/wiki/Manual:Parser_functions>
+- <https://www.mediawiki.org/wiki/Manual:Tag_extensions>
+- <http://www.offene-bibel.de/wiki/api.php5?titles=Genesis_1&action=query&prop=revisions&format=json>
+- <http://www.offene-bibel.de/wiki/api.php?action=query&list=recentchanges&rcend=20140105101010&rclimit=500&rcprop=title|ids&format=json>
