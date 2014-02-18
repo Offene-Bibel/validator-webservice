@@ -4,12 +4,29 @@ Syntaxvalidator to DB bridge
 Connect the syntax validator to the SQL database of the wiki.
 The following table has to be added. It should suffice for error tracking.
 
-    parse_errors
+    ofbi_parse_errors
         INT pageid
         INT revid
         BOOL error_occurred
         VARCHAR error_string
+    
+In addition the following tables are added to make the scripture texts syntactically available from within the website.
 
+    ofbi_verse
+        INT chapterid
+        INT version (0=Studienfassung, 1=Lesefassung, 2=Leichte Sprache)
+        INT number
+        VARCHAR sub_number
+        INT status (0 = nicht existent, 4 = fertig)
+        VARCHAR text
+    
+    ofbi_chapter
+        INT bookid
+        INT number
+    
+    ofbi_book
+        VARCHAR osis_name
+        VARCHAR name
 
 Trigger
 -------
@@ -35,8 +52,8 @@ Display
 -------
 Realized in the Extension. We add two new tags:
 
-- {{#pagestatus: Genesis_1}}
-- [[#status_overview}} (eventuell als Tag)
+- {{#ofbi_pagestatus: Genesis_1}}
+- {{#ofbi_status_overview}} (eventuell als Tag)
 
 https://www.mediawiki.org/wiki/Manual:Parser_functions
 https://www.mediawiki.org/wiki/Manual:Tag_extensions
