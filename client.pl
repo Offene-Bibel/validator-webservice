@@ -36,7 +36,7 @@ sub retrieveChanges {
     }
 
     my $filled = $rc_url;
-    my $timestamp = DateTime->now->substract(days=>1)->strftime("%y%m%d%H%M%S");
+    my $timestamp = DateTime->now->subtract(days=>1)->strftime("%Y%m%d%H%M%S");
     $filled =~ s/%s/$timestamp/;
     my $response = $ua->get($filled);
      
@@ -45,11 +45,11 @@ sub retrieveChanges {
         my $json = decode_json $response->decoded_content;
         my $end_found = 0;
         foreach my $change (@{$json->{query}->{recentchanges}}) {
-            if $change->{rcid} == $last_rcid {
+            if ($change->{rcid} == $last_rcid) {
                 $end_found = 1;
                 last;
             }
-            push @change_list {
+            push @change_list, {
                 page_name => $change->{title},
                 page_id => $change->{pageid},
                 rev_id => $change->{revid},
@@ -74,7 +74,8 @@ sub retrieveStatus {
     my ($page_name, $host, $port) = @_;
      
     my $filled = $chapter_url;
-    my $response = $ua->get("http://$host:$port/validate", 'url' => ($filled =~ s/%s/$page_name/));
+    $filled =~ s/%s/$page_name/;
+    my $response = $ua->get("$host:$port/validate", 'url' => $filled);
      
     if ($response->is_success) {
         my ($returnCode, $errorString) = split /\n/, $response->decoded_content, 2;
@@ -92,14 +93,17 @@ sub retrieveStatus {
 }
 
 sub writeToDb {
+    my ($page_id, $rev_id, $status, $desc) = @_;
+    print "PageID: $page_id\nRevID: $rev_id\nStatus: $status\nDesc: $desc\n====================\n";
+    return 0;
     use DBI;
     my $dbh = DBI->connect('dbi:mysql:perltest','root','password')
         or die "Connection Error: $DBI::errstr\n";
-    $sql = "insert into bibelwikivalidator_status values();";
-    $sth = $dbh->prepare($sql);
+    my $sql = "insert into bibelwikivalidator_status values();";
+    my $sth = $dbh->prepare($sql);
     $sth->execute
         or die "SQL Error: $DBI::errstr\n";
-    while (@row = $sth->fetchrow_array) {
+    while (my @row = $sth->fetchrow_array) {
         print "@row\n";
     } 
 }
