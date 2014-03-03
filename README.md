@@ -14,9 +14,11 @@ In addition the following tables are added to make the scripture texts syntactic
 
     ofbi_verse
         INT chapterid
+        INT pageid
+        INT revid
         INT version (0=Studienfassung, 1=Lesefassung, 2=Leichte Sprache)
-        INT number
-        VARCHAR sub_number
+        INT from_number
+        INT to_number
         INT status (0 = nicht existent, 4 = fertig)
         VARCHAR text
     
