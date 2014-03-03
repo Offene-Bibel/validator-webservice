@@ -8,6 +8,7 @@ use JSON;
 use YAML::Any qw{LoadFile};
 use URI::Escape;
 use File::Slurp;
+use DBI;
 
 my $book_file = 'bibleBooks.yml';
 my $tracking_file = 'time_tracker';
@@ -15,6 +16,7 @@ my $chapter_url = 'http://www.offene-bibel.de/wiki/index.php5?title=%s&action=ra
 my $rc_url = 'http://www.offene-bibel.de/wiki/api.php?action=query&list=recentchanges&rcend=%s&rclimit=500&rcprop=title|ids&format=json';
 my $host = 'http://patszim.volans.uberspace.de';
 my $port = 63978;
+my $dbfile = 'testdb.sqlite';
 
 my $ua = LWP::UserAgent->new;
 $ua->timeout(10);
@@ -103,18 +105,16 @@ sub retrieveStatus {
 
 sub writeToDb {
     my ($page_id, $rev_id, $status, $desc) = @_;
-    print "PageID: $page_id\nRevID: $rev_id\nStatus: $status\nDesc: $desc\n====================\n";
-    return 0;
-    use DBI;
-    my $dbh = DBI->connect('dbi:mysql:perltest','root','password')
+    if($status eq 'valid') {$status = 0}
+    else {$status = 1}
+
+    #print "PageID: $page_id\nRevID: $rev_id\nStatus: $status\nDesc: $desc\n====================\n";
+    my $dbh = DBI->connect("dbi:SQLite:dbname=$dbfile",'','')
         or die "Connection Error: $DBI::errstr\n";
-    my $sql = "insert into bibelwikivalidator_status values();";
+    my $sql = 'insert into ofbi_parse_errors values('.$dbh->quote($page_id).', '.$dbh->quote($rev_id).', '.$dbh->quote($status).', '.$dbh->quote($desc).');';
     my $sth = $dbh->prepare($sql);
     $sth->execute
         or die "SQL Error: $DBI::errstr\n";
-    while (my @row = $sth->fetchrow_array) {
-        print "@row\n";
-    } 
 }
 
 sub is_bible_book {
