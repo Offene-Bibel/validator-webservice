@@ -10,40 +10,34 @@ use URI::Escape;
 use File::Slurp;
 use DBI;
 
-my $book_file = 'bibleBooks.yml';
-my $tracking_file = 'time_tracker';
-my $chapter_url = 'http://www.offene-bibel.de/wiki/index.php5?title=%s&action=raw';
-my $rc_url = 'http://www.offene-bibel.de/wiki/api.php?action=query&list=recentchanges&rcend=%s&rclimit=500&rcprop=title|ids&format=json';
-my $host = 'http://patszim.volans.uberspace.de';
-my $port = 63978;
-my $dbfile = 'testdb.sqlite';
+my $config_file = 'config.yml';
+my $config = LoadFile($config_file);
 
 my $ua = LWP::UserAgent->new;
 $ua->timeout(10);
 # Load proxy settings from environment
 $ua->env_proxy;
 
-my $book_list = LoadFile($book_file);
+my $book_list = LoadFile($config->{book_file});
 
 my @changes = retrieveChanges();
 foreach my $change (@changes) {
-    my ($status, $desc) = retrieveStatus($change->{page_name}, $host, $port);
+    my ($status, $desc) = retrieveStatus($change->{page_name}, $config->{host}, $config->{port});
     writeToDb($change->{page_id}, $change->{rev_id}, $status, $desc);
 }
 
 sub retrieveChanges {
     my $last_rcid;
-    if(not -f $tracking_file) {
+    if(not -f $config->{tracking_file}) {
         $last_rcid = 0; #DateTime->now->substract(days=>1);
     }
     else {
-        open my $tracker_fh, "<", $tracking_file;
-        #$last_check = DateTime->from_epoch(epoch=><$tracker_fh>);
+        open my $tracker_fh, "<", $config->{tracking_file};
         $last_rcid = <$tracker_fh>;
         close $tracker_fh;
     }
 
-    my $filled = $rc_url;
+    my $filled = $config->{rc_url};
     my $timestamp = DateTime->now->subtract(days=>1)->strftime("%Y%m%d%H%M%S");
     $filled =~ s/%s/$timestamp/;
     my $response = $ua->get($filled);
@@ -68,7 +62,7 @@ sub retrieveChanges {
         say "Didn't get all diffs." if not $end_found;
 
         {
-            open my $tracker_fh, ">", $tracking_file;
+            open my $tracker_fh, ">", $config->{tracking_file};
             print $tracker_fh $json->{query}->{recentchanges}->[0]->{rcid};
             close $tracker_fh;
         }
@@ -84,9 +78,9 @@ sub retrieveStatus {
     my ($page_name, $host, $port) = @_;
     my $safe_page_name = uri_escape($page_name);
      
-    my $filled = $chapter_url;
+    my $filled = $config->{chapter_url};
     $filled =~ s/%s/$safe_page_name/;
-    my $response = $ua->get("$host:$port/validate", 'url' => $filled);
+    my $response = $ua->get($config->{host}.':'.$config->{port}.'/validate', 'url' => $filled);
      
     if ($response->is_success) {
         my ($returnCode, $errorString) = split /\n/, $response->decoded_content, 2;
@@ -109,7 +103,7 @@ sub writeToDb {
     else {$status = 1}
 
     #print "PageID: $page_id\nRevID: $rev_id\nStatus: $status\nDesc: $desc\n====================\n";
-    my $dbh = DBI->connect("dbi:SQLite:dbname=$dbfile",'','')
+    my $dbh = DBI->connect('dbi:'.$config->{dbi_connection},'','')
         or die "Connection Error: $DBI::errstr\n";
     my $sql = 'insert into ofbi_parse_errors values('.$dbh->quote($page_id).', '.$dbh->quote($rev_id).', '.$dbh->quote($status).', '.$dbh->quote($desc).');';
     my $sth = $dbh->prepare($sql);

@@ -1,2 +1,14 @@
+# options client/server
+host: 'http://patszim.volans.uberspace.de'
 port: 63978
+
+# server options
 validator_path: '/home/patrick/Documents/offeneBibel/eclipse_offbi/workspace/Parser/install/bin/validator.sh'
+
+# client options
+book_file: 'bibleBooks.yml'
+tracker_file: 'time_tracker'
+dbi_connection: 'SQLite:dbname=testdb.sqlite'
+chapter_url: 'http://www.offene-bibel.de/wiki/index.php5?title=%s&action=raw'
+rc_url: 'http://www.offene-bibel.de/wiki/api.php?action=query&list=recentchanges&rcend=%s&rclimit=500&rcprop=title|ids&format=json'
+
