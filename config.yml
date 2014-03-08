@@ -7,7 +7,7 @@ validator_path: '/home/patrick/Documents/offeneBibel/eclipse_offbi/workspace/Par
 
 # client options
 book_file: 'bibleBooks.yml'
-tracker_file: 'time_tracker'
+tracking_file: 'rev_track'
 dbi_connection: 'SQLite:dbname=testdb.sqlite'
 dbi_user: ''
 dbi_pw: ''
