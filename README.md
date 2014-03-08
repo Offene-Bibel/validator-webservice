@@ -72,10 +72,11 @@ The second approach was chosen.
 
 Display
 -------
-Realized in the Extension. We add two new tags:
+Realized in the Extension. We add some tags:
 
-- {{#ofbi_pagestatus: Genesis_1}}
-- {{#ofbi_status_overview}} (eventuell als Tag)
+- <syntax_status book="Genesis" chapter="1"/>
+- {{#syntax_status: Genesis|1}} # This one just forwards the arguments to the <syntax_status> tag.
+- {{#syntax_status_overview}} (eventuell als Tag)
 
 - <https://www.mediawiki.org/wiki/Manual:Parser_functions>
 - <https://www.mediawiki.org/wiki/Manual:Tag_extensions>
