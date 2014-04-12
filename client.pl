@@ -18,7 +18,7 @@ $ua->timeout(10);
 # Load proxy settings from environment
 $ua->env_proxy;
 
-print "My PID: $$\n" if $config->{loop_client};
+print "My PID: $$\n" if $config->{loop_client} eq "true";
 
 my $book_list = LoadFile($config->{book_file});
 
@@ -29,7 +29,7 @@ while (1) {
         writeToDb($change->{page_id}, $change->{rev_id}, $status, $desc);
     }
 
-    break if not $config->{loop_client};
+    last if $config->{loop_client} ne "true";
     if ($config->{loop_minutes} and $config->{loop_minutes} > 0) {
         sleep 60 * $config->{loop_minutes};
     }
