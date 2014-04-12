@@ -4,6 +4,8 @@ port: 63978
 
 # server options
 validator_path: '/home/patrick/Documents/offeneBibel/eclipse_offbi/workspace/Parser/install/bin/validator.sh'
+loop_client: false
+loop_minutes: 5
 
 # client options
 book_file: 'bibleBooks.yml'

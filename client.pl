@@ -20,10 +20,20 @@ $ua->env_proxy;
 
 my $book_list = LoadFile($config->{book_file});
 
-my @changes = retrieveChanges();
-foreach my $change (@changes) {
-    my ($status, $desc) = retrieveStatus($change->{page_name}, $config->{host}, $config->{port});
-    writeToDb($change->{page_id}, $change->{rev_id}, $status, $desc);
+while (1) {
+    my @changes = retrieveChanges();
+    foreach my $change (@changes) {
+        my ($status, $desc) = retrieveStatus($change->{page_name}, $config->{host}, $config->{port});
+        writeToDb($change->{page_id}, $change->{rev_id}, $status, $desc);
+    }
+
+    break if not $config->{loop_client};
+    if ($config->{loop_minutes} and $config->{loop_minutes} > 0) {
+        sleep 60 * $config->{loop_minutes};
+    }
+    else {
+        sleep 60 * 5;
+    }
 }
 
 sub retrieveChanges {
