@@ -18,6 +18,8 @@ $ua->timeout(10);
 # Load proxy settings from environment
 $ua->env_proxy;
 
+print "My PID: $$\n" if $config->{loop_client};
+
 my $book_list = LoadFile($config->{book_file});
 
 while (1) {
