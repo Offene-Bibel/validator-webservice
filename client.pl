@@ -104,7 +104,7 @@ sub writeToDb {
 
     my $dbh = DBI->connect('dbi:'.$config->{dbi_url},$config->{dbi_user},$config->{dbi_pw})
         or die "Connection Error: $DBI::errstr\n";
-    my $sql = 'insert into ofbi_parse_errors values('.$dbh->quote($page_id).', '.$dbh->quote($rev_id).', '.$dbh->quote($status).', '.$dbh->quote($desc).');';
+    my $sql = 'insert into bibelwikiparse_errors values('.$dbh->quote($page_id).', '.$dbh->quote($rev_id).', '.$dbh->quote($status).', '.$dbh->quote($desc).');';
     my $sth = $dbh->prepare($sql);
     $sth->execute
         or die "SQL Error: $DBI::errstr\n";
