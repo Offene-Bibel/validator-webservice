@@ -4,8 +4,6 @@ port: 63978
 
 # server options
 validator_path: '/home/patrick/Documents/offeneBibel/eclipse_offbi/workspace/Parser/install/bin/validator.sh'
-loop_client: false
-loop_minutes: 5
 
 # client options
 book_file: 'bibleBooks.yml'
@@ -15,4 +13,6 @@ dbi_user: ''
 dbi_pw: ''
 chapter_url: 'http://www.offene-bibel.de/wiki/index.php5?title=%s&action=raw'
 rc_url: 'http://www.offene-bibel.de/wiki/api.php?action=query&list=recentchanges&rcend=%s&rclimit=500&rcprop=title|ids&format=json'
+loop_client: false
+loop_minutes: 5
 
