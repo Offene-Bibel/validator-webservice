@@ -8,7 +8,7 @@ validator_path: '/home/patrick/Documents/offeneBibel/eclipse_offbi/workspace/Par
 # client options
 book_file: 'bibleBooks.yml'
 tracking_file: 'rev_track'
-dbi_connection: 'SQLite:dbname=testdb.sqlite'
+dbi_url: 'SQLite:dbname=testdb.sqlite'
 dbi_user: ''
 dbi_pw: ''
 chapter_url: 'http://www.offene-bibel.de/wiki/index.php5?title=%s&action=raw'
