@@ -20,6 +20,13 @@ The following perl modules are required for the *client*:
 The *server* requires:
 - Dancer2
 
+Setup
+-----
+
+- Set converter path in `validator-webservice/asdf`:123
+- Activate local mode in `validator-webservice/asdf`:123
+- Set up database access in `validator-webservice/asdf`:123
+
 
 
 The following table has to be added. It should suffice for error tracking.
