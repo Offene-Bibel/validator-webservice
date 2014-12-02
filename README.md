@@ -1,7 +1,9 @@
 Syntaxvalidator to DB bridge
 ============================
 
-Connect the syntax validator to the SQL database of the wiki.
+DISCLAMER: THIS FILE IS ONE BIG WORK IN PROGRESS
+
+Connects the syntax validator to the SQL database of the wiki.
 
 Requirements
 ------------

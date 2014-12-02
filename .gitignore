@@ -1,3 +1,4 @@
 rev_track
 testdb.sqlite
 *.swp
+.directory
