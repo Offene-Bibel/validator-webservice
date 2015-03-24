@@ -1,18 +1,30 @@
 # options client/server
+# =====================
+# Host and port of the server running the *server* process.
 host: 'http://patszim.volans.uberspace.de'
 port: 63978
 
 # server options
+# ==============
+# Path to the converter (a `validator.sh` file).
 validator_path: '/home/patrick/Documents/offeneBibel/eclipse_offbi/workspace/Parser/install/bin/validator.sh'
 
 # client options
+# ==============
+# File listing bible books. Usually no need to change this.
 book_file: 'bibleBooks.yml'
+# File used to track the last checked revision. Usually no need to change this.
 tracking_file: 'rev_track'
+# Connection parameters to the website database.
 dbi_url: 'SQLite:dbname=testdb.sqlite'
 dbi_user: ''
 dbi_pw: ''
+# URL to use to retrieve the chapter pages from.
 chapter_url: 'http://www.offene-bibel.de/wiki/index.php5?title=%s&action=raw'
+# URL used to retrieve the changes in JSON format.
 rc_url: 'http://www.offene-bibel.de/wiki/api.php?action=query&list=recentchanges&rcend=%s&rclimit=500&rcprop=title|ids&format=json'
+# Whether to run the client in a loop.
 loop_client: false
+# If run in loop mode, the interval in minutes to poll for new changes.
 loop_minutes: 5
 

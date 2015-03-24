@@ -1,13 +1,26 @@
-Syntaxvalidator to DB bridge
-============================
+Syntaxvalidator Backend
+=======================
+Basic idea:
+Use the parser to validate every wiki page that is edited and display the resulting
+status on that wiki page. Also provide a special page to list all pages that fail
+to parse.
 
-DISCLAMER: THIS FILE IS ONE BIG WORK IN PROGRESS
+Limitation:
+It is not allowed to run Java programs on the webserver serving the website.
 
-Connects the syntax validator to the SQL database of the wiki.
+Structure:
+Two separate components.
+A *client* running on the webserver is polling the wiki to retrieve latest changes.
+For every change found a webrequest is sent to the *server* running on a separate
+machine. The server downloads the respective page, runs the validator and returns a
+result. The *client* then writes that result into the database. The
+*Mediawiki extension* reads the data from the database to provide an overview page
+and display the tags indicating the status.
+
 
 Requirements
 ------------
-The following perl modules are required for the *client*:
+The following Perl modules are required for the *client*:
 
 - File::Slurp
 - YAML::Any
@@ -15,50 +28,15 @@ The following perl modules are required for the *client*:
 - DateTime
 - LWP
 - DBI
-- DBD::SQLite
+- A DBD::\* driver to talk to the website database (the live website uses mysql)
 
 The *server* requires:
 - Dancer2
-
-Setup
------
-
-- Set converter path in `validator-webservice/asdf`:123
-- Activate local mode in `validator-webservice/asdf`:123
-- Set up database access in `validator-webservice/asdf`:123
+- The converter (not a Perl module, <https://github.com/Offene-Bibel/converter>)
 
 
-
-The following table has to be added. It should suffice for error tracking.
-
-    ofbi_parse_errors
-        INT pageid
-        INT revid
-        BOOL error_occurred
-        VARCHAR error_string
-    
-In addition the following tables are added to make the scripture texts syntactically available from within the website.
-
-    ofbi_verse
-        INT chapterid
-        INT pageid
-        INT revid
-        INT version (0=Studienfassung, 1=Lesefassung, 2=Leichte Sprache)
-        INT from_number
-        INT to_number
-        INT status (0 = nicht existent, 4 = fertig)
-        VARCHAR text
-    
-    ofbi_chapter
-        INT bookid
-        INT number
-    
-    ofbi_book
-        VARCHAR osis_name
-        VARCHAR name
-
-Trigger
--------
+Design
+------
 
 I can imagine two different approaches to trigger the validator:
 
@@ -71,22 +49,24 @@ Time based query mechanism using the recentchanges API (pull):
 - Simpler -> No parser related code is in the mediawiki extension
 - Safer -> No parser side service required, thus no additional "hole"
 
-The second approach was chosen.
+I went for the second approach.
 
+
+Display
+-------
+Implemented in the Offene Bibel extension.
+
+- <syntax_status name="Genesis" chapter="1"/>
+- {{#syntax_status: Genesis|1}} # This one just forwards the arguments to the <syntax_status> tag.
+- {{#syntax_status_overview}}
+
+Links
+-----
 - <https://www.mediawiki.org/wiki/Hooks>
 - <https://www.mediawiki.org/wiki/API:Recentchanges>
 - <https://www.mediawiki.org/wiki/API:Properties#revisions_.2F_rv>
 - <http://www.offene-bibel.de/wiki/api.php5?titles=Genesis_1&action=query&prop=revisions>
 - <https://www.mediawiki.org/wiki/API>
-
-Display
--------
-Realized in the Extension. We add some tags:
-
-- <syntax_status book="Genesis" chapter="1"/>
-- {{#syntax_status: Genesis|1}} # This one just forwards the arguments to the <syntax_status> tag.
-- {{#syntax_status_overview}} (eventuell als Tag)
-
 - <https://www.mediawiki.org/wiki/Manual:Parser_functions>
 - <https://www.mediawiki.org/wiki/Manual:Tag_extensions>
 - <http://www.offene-bibel.de/wiki/api.php5?titles=Genesis_1&action=query&prop=revisions&format=json>
