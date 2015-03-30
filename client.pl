@@ -9,6 +9,7 @@ use YAML::Any qw{LoadFile};
 use URI::Escape;
 use File::Slurp;
 use DBI;
+use Try::Tiny;
 
 my $config_file = 'config.yml';
 my $config = LoadFile($config_file);
@@ -25,8 +26,13 @@ my $book_list = LoadFile($config->{book_file});
 while (1) {
     my @changes = retrieveChanges();
     foreach my $change (@changes) {
-        my ($status, $desc) = retrieveStatus($change->{page_name}, $config->{host}, $config->{port});
-        writeToDb($change->{page_id}, $change->{rev_id}, $status, $desc);
+        try {
+            my ($status, $desc) = retrieveStatus($change->{page_name}, $config->{host}, $config->{port});
+            writeToDb($change->{page_id}, $change->{rev_id}, $status, $desc);
+        }
+        catch {
+            reportError($_);
+        }
     }
 
     last if $config->{loop_client} ne "true";
@@ -87,27 +93,43 @@ sub retrieveChanges {
 }
 
 sub retrieveStatus {
+    my $result = $config->{server_mode} eq 'true' ? retrieveStatusViaWeb : retrieveStatusViaLocal;
+    my ($returnCode, $data) = split /\n/, $result, 2;
+    if($returnCode eq 'valid') {
+        return ('valid', $data);
+    } elsif($returnCode eq 'invalid') {
+        return ('invalid', $data);
+    } else {
+        die 'Neither valid nor invalid found: ' . $returnCode;
+    }
+}
+
+sub retrieveStatusViaWeb {
     my ($page_name, $host, $port) = @_;
     my $safe_page_name = uri_escape($page_name);
      
     my $filled = $config->{chapter_url};
     $filled =~ s/%s/$safe_page_name/;
-    my $response = $ua->get($config->{host}.':'.$config->{port}.'/validate', 'url' => $filled);
+    my $response = $ua->get($config->{host} . ':' . $config->{port} . '/validate', 'url' => $filled);
      
     if ($response->is_success) {
-        my ($returnCode, $errorString) = split /\n/, $response->decoded_content, 2;
-        if($returnCode eq 'valid') {
-            return ('valid', '');
-        } elsif($returnCode eq 'invalid') {
-            return ('invalid', $errorString);
-        } else {
-            return ('server_error', 'Neither valid nor invalid found: '.$returnCode);
-        }
+        return $response->decoded_content;
     }
     else {
-        return ('server_error', 'Status:'.$response->status_line."\nContent:".$response->decoded_content((charset => 'utf-8')));
+        die 'server_error Status:' . $response->status_line . "\nContent:" . $response->decoded_content((charset => 'utf-8'));
     }
 }
+
+
+sub retrieveStatusViaLocal {
+    my $validator = $config->{validator_path};
+    if (not defined $validator or not -x $validator) {
+        die 'Validator executable not found.';
+    }
+    return `$validator -u '$url'`;
+}
+
+
 
 sub writeToDb {
     my ($page_id, $rev_id, $status, $desc) = @_;
@@ -128,5 +150,25 @@ sub is_bible_book {
         return 1 if ($potential_name  =~ /^$book->{name} \d+$/);
     }
     return 0;
+}
+
+sub reportError {
+    my $message = shift;
+
+    use Email::Sender::Simple;
+    use Email::Simple;
+    use Email::Simple::Creator;
+
+     
+    my $email = Email::Simple->create(
+      header => [
+        To      => '"Patrick Zimmermann" <pzim@posteo.de>',
+        From    => '"Offene Bibel validator" <admin@offene-bibel.de>',
+        Subject => "Parsing error",
+      ],
+      body => "$message\n",
+    );
+     
+    Email::Sender::Simple->sendmail($email);
 }
 
