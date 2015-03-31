@@ -27,8 +27,8 @@ while (1) {
     my @changes = retrieveChanges();
     foreach my $change (@changes) {
         try {
-            my ($status, $desc) = retrieveStatus($change->{page_name}, $config->{host}, $config->{port});
-            writeToDb($change->{page_id}, $change->{rev_id}, $status, $desc);
+            my ($status, $details) = retrieveStatus($change->{page_name}, $config->{host}, $config->{port});
+            writeToDb($change, $status, $details);
         }
         catch {
             reportError($_);
@@ -69,9 +69,11 @@ sub retrieveChanges {
                 $end_found = 1;
                 last;
             }
-            if (is_bible_book($change->{title})) {
+            my $bibleBook = get_bible_book($change->{title});
+            if ($bibleBook) {
                 push @change_list, {
-                    page_name => $change->{title},
+                    osis_id => $bibleBook->{osis_id},
+                    chapter => $bibleBook->{chapter},
                     page_id => $change->{pageid},
                     rev_id => $change->{revid},
                 };
@@ -93,7 +95,7 @@ sub retrieveChanges {
 }
 
 sub retrieveStatus {
-    my $result = $config->{server_mode} eq 'true' ? retrieveStatusViaWeb : retrieveStatusViaLocal;
+    my $result = $config->{server_mode} eq 'true' ? retrieveStatusViaWeb(@_) : retrieveStatusViaLocal(@_);
     my ($returnCode, $data) = split /\n/, $result, 2;
     if($returnCode eq 'valid') {
         return ('valid', $data);
@@ -122,6 +124,11 @@ sub retrieveStatusViaWeb {
 
 
 sub retrieveStatusViaLocal {
+    my ($page_name, $host, $port) = @_;
+    my $safe_page_name = uri_escape($page_name);
+    my $url = $config->{chapter_url};
+    $url =~ s/%s/$safe_page_name/;
+
     my $validator = $config->{validator_path};
     if (not defined $validator or not -x $validator) {
         die 'Validator executable not found.';
@@ -132,24 +139,96 @@ sub retrieveStatusViaLocal {
 
 
 sub writeToDb {
-    my ($page_id, $rev_id, $status, $desc) = @_;
+    # $change: hash of change info as returned by retrieveStatus
+    # $status: valid/invalid
+    # $details: either parser error message, or YAML output of parser
+    my ($change, $status, $details) = @_;
     if($status eq 'valid') {$status = 0}
     else {$status = 1}
 
     my $dbh = DBI->connect('dbi:'.$config->{dbi_url},$config->{dbi_user},$config->{dbi_pw})
         or die "Connection Error: $DBI::errstr\n";
-    my $sql = 'insert into bibelwikiparse_errors values('.$dbh->quote($page_id).', '.$dbh->quote($rev_id).', '.$dbh->quote($status).', '.$dbh->quote($desc).');';
-    my $sth = $dbh->prepare($sql);
-    $sth->execute
-        or die "SQL Error: $DBI::errstr\n";
+    use Data::Dumper;
+    say Dumper([
+         $change->{page_id},
+         $change->{rev_id},
+         $status,
+         $status==0 ? '' : $details
+        ]);
+=pod
+    $dbh->do('insert into bibelwikiparse_errors values(?, ?, ?, ?);',
+        undef,
+        [
+         $change->{page_id},
+         $change->{rev_id},
+         $status,
+         $status==0 ? '' : $details
+        ]
+    ) or die "SQL Error: $DBI::errstr\n";
+=cut
+
+    if(not $status) {
+        my $stati = Load($details);
+        my @chapter_select_result = $dbh->selectrow_array(<<EOS,
+SELECT bibelwikiofbi_chapter.id
+FROM
+bibelwikiofbi_book
+INNER JOIN
+bibelwikiofbi_chapter on bibelwikiofbi_book.id = bibelwikiofbi_chapter.book_id
+WHERE bibelwikiofbi_book.osis_name=? AND bibelwikiofbi_chapter.number=?
+EOS
+            undef,
+            [
+             $change->{osis_id}, # OSIS book name
+             $change->{chapter}  # chapter number
+            ]
+        );
+        my $chapterId = @chapter_select_result[0];
+
+        for my $verse ($stati) {
+            say Dumper(
+                [
+                 $chapterId,        # chapter ID
+                 $change->{page_id},# page_id
+                 $change->{rev_id}, # rev_id
+                 $verse->{version}, # version
+                 $verse->{from},    # from_number
+                 $verse->{to},      # to_number
+                 $verse->{status},  # status
+                 $verse->{text}     # text
+                ]);
+=pod
+            $dbh->do(<<EOS,
+INSERT INTO bibelwikiparse_verse (?, ?, ?, ?, ?, ?, ?, ?)
+EOS
+                undef,
+                [
+                 $chapterId          # chapter ID
+                 $change->{page_id}, # page_id
+                 $change->{rev_id},  # rev_id
+                 $verse->{version},  # version
+                 $verse->{from},     # from_number
+                 $verse->{to},       # to_number
+                 $verse->{status},   # status
+                 $verse->{text}      # text
+                ]
+            ) or die "SQL Error: $DBI::errstr\n";
+=cut
+        }
+    }
 }
 
-sub is_bible_book {
+sub get_bible_book {
     my ($potential_name) = @_;
     for my $book (@$book_list) {
-        return 1 if ($potential_name  =~ /^$book->{name} \d+$/);
+        if ($potential_name  =~ /^$book->{name} (\d+)$/) {
+            return {
+                osis_id => $book->{id},
+                chapter => $1
+            };
+        }
     }
-    return 0;
+    return {}; # {} is falsy
 }
 
 sub reportError {
@@ -158,7 +237,6 @@ sub reportError {
     use Email::Sender::Simple;
     use Email::Simple;
     use Email::Simple::Creator;
-
      
     my $email = Email::Simple->create(
       header => [
@@ -169,6 +247,6 @@ sub reportError {
       body => "$message\n",
     );
      
-    Email::Sender::Simple->sendmail($email);
+    Email::Sender::Simple->send($email);
 }
 
