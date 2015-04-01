@@ -56,7 +56,7 @@ sub retrieveChanges {
     }
 
     my $filled = $config->{rc_url};
-    my $timestamp = DateTime->now->subtract(days=>1)->strftime("%Y%m%d%H%M%S");
+    my $timestamp = DateTime->now->subtract(days=>5)->strftime("%Y%m%d%H%M%S");
     $filled =~ s/%s/$timestamp/;
     my $response = $ua->get($filled);
      
@@ -233,20 +233,41 @@ sub get_bible_book {
 
 sub reportError {
     my $message = shift;
+    if($config->{debug_email} eq 'true') {
+        try {
+            use Email::Sender::Simple;
+            use Email::Simple;
+            use Email::Simple::Creator;
 
-    use Email::Sender::Simple;
-    use Email::Simple;
-    use Email::Simple::Creator;
-     
-    my $email = Email::Simple->create(
-      header => [
-        To      => '"Patrick Zimmermann" <pzim@posteo.de>',
-        From    => '"Offene Bibel validator" <admin@offene-bibel.de>',
-        Subject => "Parsing error",
-      ],
-      body => "$message\n",
-    );
-     
-    Email::Sender::Simple->send($email);
+            my $transport = Email::Sender::Transport::SMTP->new({
+                host => $config->{smtp_host},
+                port => $config->{smtp_port},
+            });
+
+            my $email = Email::Simple->create(
+              header => [
+                To      => '"Patrick Zimmermann" <pzim@posteo.de>',
+                From    => '"Offene Bibel validator" <admin@offene-bibel.de>',
+                Subject => "Parsing error",
+              ],
+              body => "$message\n",
+            );
+
+            Email::Sender::Simple->send($email, { transport => $transport });
+        }
+        catch {
+            reportErrorToFile("Email send failed: $_\n=============\n$message\n");
+        }
+    }
+    else {
+        reportErrorToFile($message);
+    }
+}
+
+sub reportErrorToFile {
+    my $message = shift;
+    open my $logFile, '>>', "error.log";
+    say $logFile $message;
+    close $logFile;
 }
 

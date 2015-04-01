@@ -1,5 +1,9 @@
 # client options
 # ==============
+# debug stuff
+debug_email: false
+smtp_server: SMTP
+smtp_port: 25
 # File listing bible books. Usually no need to change this.
 book_file: 'bibleBooks.yml'
 # File used to track the last checked revision. Usually no need to change this.
