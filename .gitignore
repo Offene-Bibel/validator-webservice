@@ -2,3 +2,4 @@ rev_track
 testdb.sqlite
 *.swp
 .directory
+error.log
