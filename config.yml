@@ -1,8 +1,9 @@
 # client options
 # ==============
-# debug stuff
+# send error messages via email
 debug_email: false
-smtp_server: SMTP
+# email parameters to use
+smtp_server: smtp.example.com
 smtp_port: 25
 # File listing bible books. Usually no need to change this.
 book_file: 'bibleBooks.yml'
@@ -21,7 +22,7 @@ loop_client: false
 # If run in loop mode, the interval in minutes to poll for new changes.
 loop_minutes: 5
 # Path to the converter (a `validator.sh` file). In server mode this is the path on the server computer.
-validator_path: '/home/patrick/Documents/offeneBibel/eclipse_offbi/workspace/Parser/install/bin/validator.sh'
+validator_path: '/home/patrick/Documents/offeneBibel/repos/offene-bibel-converter/install/bin/validator.sh'
 # Whether to use a separate server process on a foreign computer.
 server_mode: false
 
