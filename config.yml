@@ -1,7 +1,7 @@
 # client options
 # ==============
-# send error messages via email
-debug_email: false
+# where to send error logs to. stderr, email or file
+error_log_channel: 'stderr'
 # email parameters to use
 smtp_server: smtp.example.com
 smtp_port: 25

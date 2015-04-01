@@ -233,7 +233,7 @@ sub get_bible_book {
 
 sub reportError {
     my $message = shift;
-    if($config->{debug_email} eq 'true') {
+    if($config->{error_log_channel} eq 'email') {
         try {
             use Email::Sender::Simple;
             use Email::Simple;
@@ -259,8 +259,11 @@ sub reportError {
             reportErrorToFile("Email send failed: $_\n=============\n$message\n");
         }
     }
-    else {
+    elsif($config->{error_log_channel} eq 'file') {
         reportErrorToFile($message);
+    }
+    else {
+        say STDERR $message;
     }
 }
 
