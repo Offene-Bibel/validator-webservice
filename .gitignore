@@ -3,3 +3,4 @@ testdb.sqlite
 *.swp
 .directory
 error.log
+local/
