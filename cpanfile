@@ -9,3 +9,4 @@ requires 'DBI', '1.634';
 requires 'DBD::mysql', '4.032';
 requires 'Try::Tiny', '0.22';
 requires 'Email::Sender::Simple', '1.300018';
+requires 'Data::Printer', '0.36';

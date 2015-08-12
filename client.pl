@@ -3,7 +3,7 @@ use LWP::UserAgent;
 use POSIX qw( strftime );
 use DateTime;
 use JSON;
-use YAML::Any qw( LoadFile );
+use YAML qw( LoadFile Load );
 use URI::Escape;
 use File::Slurp;
 use DBI;
@@ -26,7 +26,7 @@ while ( 1 ) {
     my @changes = retrieveChanges();
     foreach my $change ( @changes ) {
         try {
-            my ( $status, $details ) = retrieveStatus( $change->%{ qw(page_name host port) } );
+            my ( $status, $details ) = retrieveStatus( $change->{page_name}, $config->@{ qw(host port) } );
             writeToDb( $change, $status, $details );
         }
         catch {
@@ -75,10 +75,11 @@ sub retrieveChanges {
         my $bibleBook = get_bible_book( $change->{title} );
         if ( $bibleBook ) {
             push @change_list, {
-                osis_id => $bibleBook->{osis_id},
-                chapter => $bibleBook->{chapter},
-                page_id =>    $change->{pageid},
-                rev_id  =>    $change->{revid},
+                osis_id   => $bibleBook->{osis_id},
+                chapter   => $bibleBook->{chapter},
+                page_id   => $change->{pageid},
+                rev_id    => $change->{revid},
+                page_name => $change->{title},
             };
         }
     }
@@ -136,6 +137,7 @@ sub retrieveStatusViaLocal {
     if ( not defined $validator or not -x $validator ) {
         die 'Validator executable not found.';
     }
+    say "$validator -u '$url'";
     return `$validator -u '$url'`;
 }
 
@@ -159,12 +161,12 @@ sub writeToDb {
 =pod
     $dbh->do('insert into bibelwikiparse_errors values(?, ?, ?, ?);',
         undef,
-        [
+        (
          $change->{page_id},
          $change->{rev_id},
          $status,
          $status==0 ? '' : $details
-        ]
+        )
     ) or die "SQL Error: $DBI::errstr\n";
 =cut
 
@@ -179,10 +181,10 @@ bibelwikiofbi_chapter on bibelwikiofbi_book.id = bibelwikiofbi_chapter.book_id
 WHERE bibelwikiofbi_book.osis_name=? AND bibelwikiofbi_chapter.number=?
 EOS
             undef,
-            [
+            (
              $change->{osis_id}, # OSIS book name
-             $change->{chapter}  # chapter number
-            ]
+             $change->{chapter}, # chapter number
+            )
         );
         my $chapterId = $chapter_select_result[0];
 
@@ -196,23 +198,23 @@ EOS
                  $verse->{from},    # from_number
                  $verse->{to},      # to_number
                  $verse->{status},  # status
-                 $verse->{text}     # text
+                 $verse->{text},    # text
                 ] );
 =pod
             $dbh->do(<<EOS,
 INSERT INTO bibelwikiparse_verse ( ?, ?, ?, ?, ?, ?, ?, ? )
 EOS
                 undef,
-                [
-                 $chapterId          # chapter ID
+                (
+                 $chapterId,         # chapter ID
                  $change->{page_id}, # page_id
                  $change->{rev_id},  # rev_id
                  $verse->{version},  # version
                  $verse->{from},     # from_number
                  $verse->{to},       # to_number
                  $verse->{status},   # status
-                 $verse->{text}      # text
-                ]
+                 $verse->{text},     # text
+                )
             ) or die "SQL Error: $DBI::errstr\n";
 =cut
         }
@@ -230,7 +232,7 @@ sub get_bible_book {
             };
         }
     }
-    return {}; # {} is falsy
+    return undef;
 }
 
 # Error reporting via email.
