@@ -1,8 +1,7 @@
 #!/usr/bin/env perl
-use v5.12;
-use strict;
  
 use Dancer2;
+use Prologue;
  
 get '/validate' => sub {
     my $url = request->header('url');
@@ -22,4 +21,3 @@ get '/validate' => sub {
 };  
  
 dance;
-
