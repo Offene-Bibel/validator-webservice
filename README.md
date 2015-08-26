@@ -20,15 +20,6 @@ and display the tags indicating the status.
 
 Requirements
 ------------
-The following Perl modules are required for the *client*:
-
-- File::Slurp
-- YAML::Any
-- JSON
-- DateTime
-- LWP
-- DBI
-- A DBD::\* driver to talk to the website database (the live website uses mysql)
 
 The *server* requires:
 - Dancer2
