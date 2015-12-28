@@ -3,4 +3,5 @@ testdb.sqlite
 *.swp
 .directory
 error.log
+cpanfile.snapshot
 local/
