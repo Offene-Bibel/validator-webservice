@@ -8,7 +8,7 @@ use YAML qw( LoadFile Load );
 use URI::Escape;
 use File::Slurp;
 use DBI;
-use Try::Tiny;
+use syntax 'try';
 use Prologue;
 
 has 'config' => (
@@ -23,7 +23,7 @@ has 'user_agent' => (
     builder  => '_build_user_agent'
 );
 sub _build_user_agent {
-    my $ua = user_agent( LWP::UserAgent->new );
+    my $ua = LWP::UserAgent->new;
     $ua->timeout( 10 );
     # Load proxy settings from environment
     $ua->env_proxy;
@@ -32,34 +32,40 @@ sub _build_user_agent {
 
 has 'book_list' => (
     is      => 'rw',
-    lazy    => 1,
 );
 
 sub BUILD {
     my $self = shift;
     my $args = shift;
 
-    $self->config( LoadFile( $args->{config_file} ) );
+    $self->config( LoadFile( $args->{config_file} ));
 
-    $self->book_list( LoadFile( $self->config->{config_file} ) ); 
+    my $book_file = $self->config->{book_file};
+    if ( ! File::Spec->file_name_is_absolute( $book_file )) {
+        my ( $volume, $dirs, undef ) = File::Spec->splitpath( $self->config->{config_file} );
+        $book_file = File::Spec->catpath( $volume, $dirs, $book_file );
+    }
+
+    $self->book_list( LoadFile( $book_file )); 
 }
 
 sub run {
+    my $self = shift;
     while ( 1 ) {
-        my @changes = retrieveChanges();
+        my @changes = $self->retrieveChanges();
         foreach my $change ( @changes ) {
             try {
-                my ( $status, $details ) = retrieveStatus( $change->{page_name}, $config->@{ qw(host port) } );
-                writeToDb( $change, $status, $details );
+                my ( $status, $details ) = $self->retrieveStatus( $change->{page_name}, $self->config->@{ qw(host port) } );
+                $self->writeToDb( $change, $status, $details );
             }
-            catch {
-                reportError( $_ );
+            catch ( $e ) {
+                $self->reportError( $e );
             }
         }
 
-        last if $config->{loop_client} ne "true";
-        if ( $config->{loop_minutes} and $config->{loop_minutes} > 0 ) {
-            sleep 60 * $config->{loop_minutes};
+        last if $self->config->{loop_client} ne "true";
+        if ( $self->config->{loop_minutes} and $self->config->{loop_minutes} > 0 ) {
+            sleep 60 * $self->config->{loop_minutes};
         }
         else {
             sleep 60 * 5;
@@ -69,22 +75,23 @@ sub run {
 
 # Reads in all changes that happened since the last read (or from five days ago when no last read happened).
 sub retrieveChanges {
+    my $self = shift;
     # Retrieve last recent changes entry we read.
     my $last_rcid;
-    if ( not -f $config->{tracking_file} ) {
+    if ( not -f $self->config->{tracking_file} ) {
         $last_rcid = 0; #DateTime->now->substract(days=>1);
     }
     else {
-        open my $tracker_fh, "<", $config->{tracking_file};
+        open my $tracker_fh, "<", $self->config->{tracking_file};
         $last_rcid = <$tracker_fh>;
         close $tracker_fh;
     }
 
     # Retrieve the recent changes, going back at most five days.
-    my $filled = $config->{rc_url};
+    my $filled = $self->config->{rc_url};
     my $timestamp = DateTime->now->subtract( days => 25 )->strftime( "%Y%m%d%H%M%S" );
     $filled =~ s/%s/$timestamp/;
-    my $response = $ua->get( $filled );
+    my $response = $self->user_agent->get( $filled );
     die 'Status:' . $response->status_line . "\nContent:" . $response->decoded_content( charset => 'utf-8' ) if not $response->is_success;
      
     # Process recent changes, creating a @change_list.
@@ -96,7 +103,7 @@ sub retrieveChanges {
             $end_found = 1;
             last;
         }
-        my $bibleBook = get_bible_book( $change->{title} );
+        my $bibleBook = $self->get_bible_book( $change->{title} );
         if ( $bibleBook ) {
             push @change_list, {
                 osis_id   => $bibleBook->{osis_id},
@@ -111,7 +118,7 @@ sub retrieveChanges {
 
     # Write the latest recent changes ID back to the tracking file.
     {
-        open my $tracker_fh, ">", $config->{tracking_file};
+        open my $tracker_fh, ">", $self->config->{tracking_file};
         print $tracker_fh $json->{query}->{recentchanges}->[0]->{rcid};
         close $tracker_fh;
     }
@@ -122,7 +129,8 @@ sub retrieveChanges {
 # Query the parser which tells us whether the given page is valid.
 # This can either happen via a web request or directly.
 sub retrieveStatus {
-    my $result = $config->{server_mode} eq 'true' ? retrieveStatusViaWeb( @_ ) : retrieveStatusViaLocal( @_ );
+    my $self = shift;
+    my $result = $self->config->{server_mode} eq 'true' ? $self->retrieveStatusViaWeb( @_ ) : $self->retrieveStatusViaLocal( @_ );
     my ( $returnCode, $data ) = split /\n/, $result, 2;
     if ( $returnCode eq 'valid' ) {
         return ( 'valid', $data );
@@ -135,12 +143,12 @@ sub retrieveStatus {
 
 # Query the parser via web request.
 sub retrieveStatusViaWeb {
-    my ( $page_name, $host, $port ) = @_;
+    my ( $self, $page_name, $host, $port ) = @_;
     my $safe_page_name = uri_escape( $page_name );
      
-    my $filled = $config->{chapter_url};
+    my $filled = $self->config->{chapter_url};
     $filled =~ s/%s/$safe_page_name/;
-    my $response = $ua->get( $config->{host} . ':' . $config->{port} . '/validate', url => $filled );
+    my $response = $self->user_agent->get( $self->config->{host} . ':' . $self->config->{port} . '/validate', url => $filled );
      
     if ( $response->is_success ) {
         return $response->decoded_content;
@@ -152,12 +160,12 @@ sub retrieveStatusViaWeb {
 
 # Query the parser locally.
 sub retrieveStatusViaLocal {
-    my ( $page_name, $host, $port ) = @_;
+    my ( $self, $page_name, $host, $port ) = @_;
     my $safe_page_name = uri_escape( $page_name );
-    my $url = $config->{chapter_url};
+    my $url = $self->config->{chapter_url};
     $url =~ s/%s/$safe_page_name/;
 
-    my $validator = $config->{validator_path};
+    my $validator = $self->config->{validator_path};
     if ( not defined $validator or not -x $validator ) {
         die 'Validator executable not found.';
     }
@@ -170,10 +178,10 @@ sub writeToDb {
     # $change: hash of change info as returned by retrieveStatus
     # $status: valid/invalid
     # $details: either parser error message, or YAML output of parser
-    my ( $change, $status, $details ) = @_;
+    my ( $self, $change, $status, $details ) = @_;
     $status = $status eq 'valid' ? 0 : 1;
 
-    my $dbh = DBI->connect( 'dbi:' . $config->{dbi_url}, $config->{dbi_user}, $config->{dbi_pw} )
+    my $dbh = DBI->connect( 'dbi:' . $self->config->{dbi_url}, $self->config->{dbi_user}, $self->config->{dbi_pw} )
         or die "Connection Error: $DBI::errstr\n";
     use Data::Dumper;
     say Dumper( [
@@ -247,8 +255,8 @@ EOS
 
 # Checks the given book name for validity and returns OSIS ID and chapter no if valid.
 sub get_bible_book {
-    my ( $potential_name ) = @_;
-    for my $book ( @$book_list ) {
+    my ( $self, $potential_name ) = @_;
+    for my $book ( @{$self->book_list} ) {
         if ( $potential_name  =~ /^$book->{name} (\d+)$/ ) {
             return {
                 osis_id => $book->{id},
@@ -261,16 +269,16 @@ sub get_bible_book {
 
 # Error reporting via email.
 sub reportError {
-    my $message = shift;
-    if ( $config->{error_log_channel} eq 'email' ) {
+    my ( $self, $message ) = @_;
+    if ( $self->config->{error_log_channel} eq 'email' ) {
         try {
             use Email::Sender::Simple;
             use Email::Simple;
             use Email::Simple::Creator;
 
             my $transport = Email::Sender::Transport::SMTP->new( {
-                host => $config->{smtp_host},
-                port => $config->{smtp_port},
+                host => $self->config->{smtp_host},
+                port => $self->config->{smtp_port},
             } );
 
             my $email = Email::Simple->create(
@@ -284,12 +292,12 @@ sub reportError {
 
             Email::Sender::Simple->send( $email, { transport => $transport } );
         }
-        catch {
-            reportErrorToFile( "Email send failed: $_\n=============\n$message\n" );
+        catch ( $e ) {
+            $self->reportErrorToFile( "Email send failed: $e\n=============\n$message\n" );
         }
     }
-    elsif ( $config->{error_log_channel} eq 'file' ) {
-        reportErrorToFile($message);
+    elsif ( $self->config->{error_log_channel} eq 'file' ) {
+        $self->reportErrorToFile($message);
     }
     else {
         say STDERR $message;
@@ -304,3 +312,4 @@ sub reportErrorToFile {
     close $logFile;
 }
 
+1;

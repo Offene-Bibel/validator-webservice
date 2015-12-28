@@ -7,7 +7,7 @@ requires 'URI::Escape', '1.69';
 requires 'File::Slurp', '9999.19';
 requires 'DBI', '1.634';
 requires 'DBD::mysql', '4.032';
-requires 'Try::Tiny', '0.22';
+requires 'Syntax::Feature::Try', '1.003';
 requires 'Email::Sender::Simple', '1.300018';
 requires 'Data::Printer', '0.36';
 requires 'Dancer2', '0.161000';
