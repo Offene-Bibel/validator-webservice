@@ -6,7 +6,7 @@ use Dancer2;
 use Prologue;
  
 get '/validate' => sub {
-    my $url = request->header('url');
+    my $url = param( 'url' );
     if (not defined $url) {
         status 400; # bad_request
         return "No 'url' parameter given.";
