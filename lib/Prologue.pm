@@ -5,6 +5,7 @@ use warnings ();
 use feature  ();
 use mro      ();
 use utf8;
+use open     ();
 
 sub import
 {
@@ -15,6 +16,14 @@ sub import
                         'experimental::lexical_subs', 'experimental::smartmatch' );
     mro::set_mro( scalar caller(), 'c3' );
     utf8    ->import;
+    ::open  ->import( ':encoding(utf8)' );
+    binmode STDIN,  ':encoding(utf8)';
+    binmode STDOUT, ':utf8';
+    binmode STDERR, ':utf8';
+    # Get the current locale from the environment, and let STDOUT
+    # convert to that encoding:
+    #use PerlIO::locale;
+    #binmode STDOUT, ':locale';
 }
 
 1;

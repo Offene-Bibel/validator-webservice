@@ -4,11 +4,12 @@ use LWP::UserAgent;
 use POSIX qw( strftime );
 use DateTime;
 use JSON;
-use YAML qw( LoadFile Load );
+use YAML::XS qw( LoadFile Load );
 use URI::Escape;
 use File::Slurp;
 use DBI;
 use syntax 'try';
+use Encode;
 use Prologue;
 
 has 'config' => (
@@ -169,13 +170,12 @@ sub retrieveStatusViaLocal {
     if ( not defined $validator or not -x $validator ) {
         die 'Validator executable not found.';
     }
-    say "$validator -u '$url'";
-    return `$validator -u '$url'`;
+    return `$validator --json -u '$url'`;
 }
 
 # Record a validity status in the database.
 sub writeToDb {
-    # $change: hash of change info as returned by retrieveStatus
+    # $change: hash of change info as returned by retrieveChanges
     # $status: valid/invalid
     # $details: either parser error message, or YAML output of parser
     my ( $self, $change, $status, $details ) = @_;
@@ -183,15 +183,8 @@ sub writeToDb {
 
     my $dbh = DBI->connect( 'dbi:' . $self->config->{dbi_url}, $self->config->{dbi_user}, $self->config->{dbi_pw} )
         or die "Connection Error: $DBI::errstr\n";
-    use Data::Dumper;
-    say Dumper( [
-         $change->{page_id},
-         $change->{rev_id},
-         $status,
-         $status==0 ? '' : $details
-        ] );
-=pod
-    $dbh->do('insert into bibelwikiparse_errors values(?, ?, ?, ?);',
+    # Insert status.
+    $dbh->do('INSERT INTO bibelwikiofbi_parse_status VALUES ( NULL, ?, ?, ?, ? );',
         undef,
         (
          $change->{page_id},
@@ -200,10 +193,11 @@ sub writeToDb {
          $status==0 ? '' : $details
         )
     ) or die "SQL Error: $DBI::errstr\n";
-=cut
 
     if ( not $status ) {
-        my $stati = Load( $details );
+        # Insert verse.
+        # YAML::XS Load() only accepts UTF-8 octets and always returns decoded Perl strings.
+        my $stati = Load( encode( 'UTF-8', $details ) );
         my @chapter_select_result = $dbh->selectrow_array( <<EOS,
 SELECT bibelwikiofbi_chapter.id
 FROM
@@ -220,21 +214,9 @@ EOS
         );
         my $chapterId = $chapter_select_result[0];
 
-        for my $verse ( $stati ) {
-            say Dumper(
-                [
-                 $chapterId,        # chapter ID
-                 $change->{page_id},# page_id
-                 $change->{rev_id}, # rev_id
-                 $verse->{version}, # version
-                 $verse->{from},    # from_number
-                 $verse->{to},      # to_number
-                 $verse->{status},  # status
-                 $verse->{text},    # text
-                ] );
-=pod
+        for my $verse ( $stati->@* ) {
             $dbh->do(<<EOS,
-INSERT INTO bibelwikiparse_verse ( ?, ?, ?, ?, ?, ?, ?, ? )
+INSERT INTO bibelwikiofbi_verse VALUES ( NULL, ?, ?, ?, ?, ?, ?, ?, ? )
 EOS
                 undef,
                 (
@@ -248,7 +230,6 @@ EOS
                  $verse->{text},     # text
                 )
             ) or die "SQL Error: $DBI::errstr\n";
-=cut
         }
     }
 }

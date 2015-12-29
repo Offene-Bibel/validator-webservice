@@ -2,7 +2,7 @@ requires 'Moose', '2.1600';
 requires 'LWP::UserAgent' , '6.13';
 requires 'DateTime', '1.20';
 requires 'JSON', '2.90';
-requires 'YAML', '1.15';
+requires 'YAML::XS', '0.59';
 requires 'URI::Escape', '1.69';
 requires 'File::Slurp', '9999.19';
 requires 'DBI', '1.634';
