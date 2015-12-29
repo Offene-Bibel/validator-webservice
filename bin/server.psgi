@@ -18,7 +18,7 @@ get '/validate' => sub {
         return 'Validator executable not found.';
     }
 
-    my $result = `$validator -u '$url'`;
+    my $result = `$validator --json -u '$url'`;
     return $result;
 };  
  
