@@ -22,4 +22,4 @@ get '/validate' => sub {
     return $result;
 };  
  
-dance;
+to_app;
