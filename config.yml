@@ -10,7 +10,7 @@ book_file: 'bibleBooks.yml'
 # File used to track the last checked revision. Usually no need to change this.
 tracking_file: 'rev_track'
 # Connection parameters to the website database.
-dbi_url: 'mysql:database=offenebibel1;host=localhost;port=3306'
+dbi_url: 'mysql:database=offenebibel1;host=localhost;port=3306;mysql_enable_utf8=1'
 dbi_user: 'offenebibel'
 dbi_pw: 'cgW3VWmrMg'
 # URL to use to retrieve the chapter pages from.
