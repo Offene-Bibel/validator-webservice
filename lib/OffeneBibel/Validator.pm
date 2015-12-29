@@ -131,7 +131,7 @@ sub retrieveChanges {
 # This can either happen via a web request or directly.
 sub retrieveStatus {
     my $self = shift;
-    my $result = $self->config->{server_mode} eq 'true' ? $self->retrieveStatusViaWeb( @_ ) : $self->retrieveStatusViaLocal( @_ );
+    my $result = $self->config->{server_mode} ? $self->retrieveStatusViaWeb( @_ ) : $self->retrieveStatusViaLocal( @_ );
     my ( $returnCode, $data ) = split /\n/, $result, 2;
     if ( $returnCode eq 'valid' ) {
         return ( 'valid', $data );
@@ -149,10 +149,10 @@ sub retrieveStatusViaWeb {
      
     my $filled = $self->config->{chapter_url};
     $filled =~ s/%s/$safe_page_name/;
-    my $response = $self->user_agent->get( $self->config->{host} . ':' . $self->config->{port} . '/validate', url => $filled );
+    my $response = $self->user_agent->get( $self->config->{host} . ':' . $self->config->{port} . '/validate?url=' . uri_escape( $filled ));
      
     if ( $response->is_success ) {
-        return $response->decoded_content;
+        return $response->decoded_content( charset => 'utf-8' );
     }
     else {
         die 'server_error Status:' . $response->status_line . "\nContent:" . $response->decoded_content( charset => 'utf-8' );
