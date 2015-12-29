@@ -257,11 +257,6 @@ sub reportError {
             use Email::Simple;
             use Email::Simple::Creator;
 
-            my $transport = Email::Sender::Transport::SMTP->new( {
-                host => $self->config->{smtp_host},
-                port => $self->config->{smtp_port},
-            } );
-
             my $email = Email::Simple->create(
               header => [
                 To      => '"Patrick Zimmermann" <pzim@posteo.de>',
@@ -271,7 +266,16 @@ sub reportError {
               body => "$message\n",
             );
 
-            Email::Sender::Simple->send( $email, { transport => $transport } );
+            if ( $self->config->{smtp_host} ) {
+                my $transport = Email::Sender::Transport::SMTP->new( {
+                    host => $self->config->{smtp_host},
+                    port => $self->config->{smtp_port} // 25,
+                } );
+                Email::Sender::Simple->send( $email, { transport => $transport } );
+            }
+            else {
+                Email::Sender::Simple->send( $email );
+            }
         }
         catch ( $e ) {
             $self->reportErrorToFile( "Email send failed: $e\n=============\n$message\n" );

@@ -2,27 +2,35 @@
 # ==============
 # where to send error logs to. stderr, email or file
 error_log_channel: 'stderr'
-# email parameters to use
-smtp_server: 'smtp.example.com'
-smtp_port: 25
+
+# Email parameters to use. Should work out of the box, only uncomment if you need some special transport.
+#smtp_server: 'smtp.example.com'
+#smtp_port: 25
+
 # File listing bible books. Usually no need to change this.
 book_file: 'bibleBooks.yml'
+
 # File used to track the last checked revision. Usually no need to change this.
 tracking_file: 'rev_track'
+
 # Connection parameters to the website database.
 dbi_url: 'mysql:database=offenebibel;host=localhost;port=3306;mysql_enable_utf8=1'
 dbi_user: 'offenebibel'
 dbi_pw: 'password'
+
 # URL to use to retrieve the chapter pages from.
 chapter_url: 'http://offene-bibel.de/mediawiki/index.php?title=%s&action=raw'
 # URL used to retrieve the changes in JSON format.
 rc_url: 'http://offene-bibel.de/mediawiki/api.php?action=query&list=recentchanges&rcend=%s&rclimit=500&rcprop=title|ids&format=json'
+
 # Whether to run the client in a loop.
 loop_client: false
 # If run in loop mode, the interval in minutes to poll for new changes.
 loop_minutes: 5
+
 # Path to the converter (a `validator.sh` file). In server mode this is the path on the server computer.
 validator_path: '/path/to/converter/install/bin/validator.sh'
+
 # Whether to use a separate server process on a foreign computer.
 server_mode: false
 
