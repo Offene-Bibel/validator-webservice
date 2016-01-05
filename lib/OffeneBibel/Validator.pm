@@ -75,7 +75,7 @@ sub run {
             }
         }
 
-        last if $self->config->{loop_client} ne "true";
+        last if not $self->config->{loop_client};
         if ( $self->config->{loop_minutes} and $self->config->{loop_minutes} > 0 ) {
             sleep 60 * $self->config->{loop_minutes};
         }
