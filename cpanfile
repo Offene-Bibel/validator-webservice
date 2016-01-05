@@ -11,6 +11,7 @@ requires 'Syntax::Feature::Try', '1.003';
 requires 'Email::Sender::Simple', '1.300018';
 requires 'Data::Printer', '0.36';
 requires 'Dancer2', '0.161000';
+requires 'Getopt::Lucid', '1.05';
 
 # Testing
 requires 'DBD::SQLite', '1.48';

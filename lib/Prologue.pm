@@ -1,15 +1,19 @@
 package Prologue;
 
-use strict;
+# See https://metacpan.org/pod/Import::Into#WHY-USE-THIS-MODULE
+
+use strict   ();
 use warnings ();
 use feature  ();
 use mro      ();
-use utf8;
+use utf8     ();
 use open     ();
+use English  ();
 
 sub import
 {
     strict  ->import;
+
     feature ->import( ':5.20', 'signatures', 'postderef', 'lexical_subs' );
     warnings->import;
     warnings->unimport( 'experimental::signatures',   'experimental::postderef',
@@ -24,6 +28,9 @@ sub import
     # convert to that encoding:
     #use PerlIO::locale;
     #binmode STDOUT, ':locale';
+
+    my ($target, $file, $line) = caller(1);
+    eval "package $target; use English;";
 }
 
 1;

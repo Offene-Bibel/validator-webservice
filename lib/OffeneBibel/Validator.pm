@@ -17,6 +17,11 @@ has 'config' => (
     init_arg => undef # Can't be set by constructor.
 );
 
+has 'dbh' => (
+    is => 'rw',
+    init_arg => undef # Can't be set by constructor.
+);
+
 has 'user_agent' => (
     is       => 'rw',
     init_arg => undef,
@@ -25,7 +30,7 @@ has 'user_agent' => (
 );
 sub _build_user_agent {
     my $ua = LWP::UserAgent->new;
-    $ua->timeout( 10 );
+    $ua->timeout( 180 );
     # Load proxy settings from environment
     $ua->env_proxy;
     return $ua;
@@ -48,6 +53,12 @@ sub BUILD {
     }
 
     $self->book_list( LoadFile( $book_file )); 
+
+    $self->dbh( DBI->connect(
+            'dbi:' . $self->config->{dbi_url},
+            $self->config->{dbi_user},
+            $self->config->{dbi_pw} ))
+        or die "Connection Error: $DBI::errstr\n";
 }
 
 sub run {
@@ -72,6 +83,31 @@ sub run {
             sleep 60 * 5;
         }
     }
+}
+
+sub full_reparse {
+    my $self = shift;
+
+    for my $book ( $self->book_list->@* ) {
+    LOOP: for ( my $chapter = 1; $chapter <= $book->{chapterCount}; $chapter++ ) {
+    try {
+        my $page_name = $book->{name} . '_' . $chapter;
+        my $page_info = $self->get_page_info( $page_name );
+        if ( $page_info ) {
+            my $chapter_info = {
+                osis_id   => $book->{id},
+                chapter   => $chapter,
+                page_id   => $page_info->{pageid},
+                rev_id    => $page_info->{revid},
+            };
+
+            my ( $status, $details ) = $self->retrieveStatus( $page_name, $self->config->@{ qw(host port) } );
+            $self->writeToDb( $chapter_info, $status, $details );
+        }
+    }
+    catch ( $e ) {
+        $self->reportError( $e );
+    }}}
 }
 
 # Reads in all changes that happened since the last read (or from five days ago when no last read happened).
@@ -181,10 +217,17 @@ sub writeToDb {
     my ( $self, $change, $status, $details ) = @_;
     $status = $status eq 'valid' ? 0 : 1;
 
-    my $dbh = DBI->connect( 'dbi:' . $self->config->{dbi_url}, $self->config->{dbi_user}, $self->config->{dbi_pw} )
-        or die "Connection Error: $DBI::errstr\n";
     # Insert status.
-    $dbh->do('INSERT INTO bibelwikiofbi_parse_status VALUES ( NULL, ?, ?, ?, ? );',
+    $self->dbh->do(
+        'DELETE FROM bibelwikiofbi_parse_status WHERE pageid = ? AND revid = ?',
+        undef,
+        (
+         $change->{page_id},
+         $change->{rev_id},
+        )
+    ) or die "SQL Error: $DBI::errstr\n";
+    $self->dbh->do(
+        'INSERT INTO bibelwikiofbi_parse_status VALUES ( NULL, ?, ?, ?, ? )',
         undef,
         (
          $change->{page_id},
@@ -198,7 +241,7 @@ sub writeToDb {
         # Insert verse.
         # YAML::XS Load() only accepts UTF-8 octets and always returns decoded Perl strings.
         my $stati = Load( encode( 'UTF-8', $details ) );
-        my @chapter_select_result = $dbh->selectrow_array( <<EOS,
+        my @chapter_select_result = $self->dbh->selectrow_array( <<EOS,
 SELECT bibelwikiofbi_chapter.id
 FROM
 bibelwikiofbi_book
@@ -215,9 +258,16 @@ EOS
         my $chapterId = $chapter_select_result[0];
 
         for my $verse ( $stati->@* ) {
-            $dbh->do(<<EOS,
-INSERT INTO bibelwikiofbi_verse VALUES ( NULL, ?, ?, ?, ?, ?, ?, ?, ? )
-EOS
+            $self->dbh->do(
+                'DELETE FROM bibelwikiofbi_verse WHERE pageid = ? AND revid = ?',
+                undef,
+                (
+                 $change->{page_id}, # page_id
+                 $change->{rev_id},  # rev_id
+                )
+            ) or die "SQL Error: $DBI::errstr\n";
+            $self->dbh->do(
+                'INSERT INTO bibelwikiofbi_verse VALUES ( NULL, ?, ?, ?, ?, ?, ?, ?, ? )',
                 undef,
                 (
                  $chapterId,         # chapter ID
@@ -246,6 +296,37 @@ sub get_bible_book {
         }
     }
     return undef;
+}
+
+sub get_page_info {
+    my ( $self, $title ) = @_;
+    my $url = $self->config->{meta_url};
+    $url =~ s/%s/$title/;
+
+    my $response = $self->user_agent->get( $url );
+    die 'Status:' . $response->status_line . "\nContent:" . $response->decoded_content( charset => 'utf-8' ) if not $response->is_success;
+    my $json = decode_json( $response->decoded_content );
+
+    my %pages = $json->{query}->{pages}->%*;
+    if ( ( scalar keys %pages ) > 1 ) {
+        say "More than one page found for title: $title.\n URL: $url\n Skipping.";
+        return undef;
+    }
+    elsif ( ( scalar keys %pages ) == 0 ) {
+        say "Pages map returned malformed result. Should have at least one title.\n URL: $url";
+        return undef;
+    }
+
+    my %first_page = $pages{ (keys %pages)[0] }->%*;
+    if ( exists $first_page{missing} ) {
+        say "No page found for title: $title.\n URL: $url";
+        return undef;
+    }
+
+    return {
+        pageid => $first_page{pageid},
+        revid  => $first_page{lastrevid},
+    };
 }
 
 # Error reporting via email.

@@ -18,6 +18,8 @@ dbi_pw: 'password'
 
 # URL to use to retrieve the chapter pages from.
 chapter_url: 'http://offene-bibel.de/mediawiki/index.php?title=%s&action=raw'
+# URL to use to retrieve pageid and revid for a given page title.
+meta_url: 'http://offene-bibel.de/mediawiki/api.php?action=query&prop=info&format=json&titles=%s'
 # URL used to retrieve the changes in JSON format.
 rc_url: 'http://offene-bibel.de/mediawiki/api.php?action=query&list=recentchanges&rcend=%s&rclimit=500&rcprop=title|ids&format=json'
 
