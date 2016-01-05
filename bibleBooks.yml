@@ -322,7 +322,7 @@
   name: Judas
   chapterCount: 1
   part: nt
-  chapterCount: [ 25 ]
+  verseCounts: [ 25 ]
 - id: Rev
   name: Offenbarung
   chapterCount: 22
