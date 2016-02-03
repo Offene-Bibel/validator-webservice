@@ -4,7 +4,7 @@ requires 'DateTime', '1.20';
 requires 'JSON', '2.90';
 requires 'YAML::XS', '0.59';
 requires 'URI::Escape', '1.69';
-requires 'File::Slurp', '9999.19';
+requires 'File::Slurper', '0.008';
 requires 'DBI', '1.634';
 requires 'DBD::mysql', '4.032';
 requires 'Syntax::Feature::Try', '1.003';

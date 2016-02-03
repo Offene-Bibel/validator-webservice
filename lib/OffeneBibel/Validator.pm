@@ -6,11 +6,12 @@ use DateTime;
 use JSON;
 use YAML::XS qw( LoadFile Load );
 use URI::Escape;
-use File::Slurp;
+use File::Slurper qw( write_text );
 use DBI;
 use syntax 'try';
 use Encode;
 use Prologue;
+use English;
 
 has 'config' => (
     is => 'rw',
@@ -63,6 +64,11 @@ sub BUILD {
 
 sub run {
     my $self = shift;
+
+    if ( $self->config->{loop_client} ) {
+        write_text( $self->config->{pid_file}, $PROCESS_ID );
+    }
+
     while ( 1 ) {
         my @changes = $self->retrieveChanges();
         foreach my $change ( @changes ) {
@@ -154,11 +160,7 @@ sub retrieveChanges {
     say "Didn't get all diffs." if not $end_found;
 
     # Write the latest recent changes ID back to the tracking file.
-    {
-        open my $tracker_fh, ">", $self->config->{tracking_file};
-        print $tracker_fh $json->{query}->{recentchanges}->[0]->{rcid};
-        close $tracker_fh;
-    }
+    write_text( $self->config->{tracking_file}, $json->{query}->{recentchanges}->[0]->{rcid} );
 
     return @change_list;
 }
@@ -169,9 +171,9 @@ sub retrieveStatus {
     my $self = shift;
     my $result = $self->config->{server_mode} ? $self->retrieveStatusViaWeb( @_ ) : $self->retrieveStatusViaLocal( @_ );
     my ( $returnCode, $data ) = split /\n/, $result, 2;
-    if ( $returnCode eq 'valid' ) {
+    if ( defined $returnCode && $returnCode eq 'valid' ) {
         return ( 'valid', $data );
-    } elsif ( $returnCode eq 'invalid' ) {
+    } elsif ( defined $returnCode && $returnCode eq 'invalid' ) {
         return ( 'invalid', $data );
     } else {
         die 'Neither valid nor invalid found: ' . $returnCode;
@@ -257,15 +259,16 @@ EOS
         );
         my $chapterId = $chapter_select_result[0];
 
+        $self->dbh->do(
+            'DELETE FROM bibelwikiofbi_verse WHERE pageid = ? AND revid = ?',
+            undef,
+            (
+             $change->{page_id}, # page_id
+             $change->{rev_id},  # rev_id
+            )
+        ) or die "SQL Error: $DBI::errstr\n";
+
         for my $verse ( $stati->@* ) {
-            $self->dbh->do(
-                'DELETE FROM bibelwikiofbi_verse WHERE pageid = ? AND revid = ?',
-                undef,
-                (
-                 $change->{page_id}, # page_id
-                 $change->{rev_id},  # rev_id
-                )
-            ) or die "SQL Error: $DBI::errstr\n";
             $self->dbh->do(
                 'INSERT INTO bibelwikiofbi_verse VALUES ( NULL, ?, ?, ?, ?, ?, ?, ?, ? )',
                 undef,

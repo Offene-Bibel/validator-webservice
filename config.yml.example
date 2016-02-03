@@ -27,6 +27,8 @@ rc_url: 'http://offene-bibel.de/mediawiki/api.php?action=query&list=recentchange
 loop_client: false
 # If run in loop mode, the interval in minutes to poll for new changes.
 loop_minutes: 5
+# File to write the PID to if running in loop mode.
+pid_file: client.pid
 
 # Path to the converter (a `validator.sh` file). In server mode this is the path on the server computer.
 validator_path: '/path/to/converter/install/bin/validator.sh'
